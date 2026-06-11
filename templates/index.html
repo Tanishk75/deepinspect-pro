@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>DeepInspect Pro — Dashboard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0f0f1a;
+      color: #e0e0e0;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #1a1a2e;
+      padding: 18px 32px;
+      border-bottom: 2px solid #00d4ff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    header h1 {
+      font-size: 22px;
+      color: #00d4ff;
+      letter-spacing: 1px;
+    }
+
+    header h1 span {
+      color: #ffffff;
+      font-weight: 300;
+    }
+
+    #status-badge {
+      padding: 5px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      background: #00d4ff22;
+      color: #00d4ff;
+      border: 1px solid #00d4ff55;
+    }
+
+    #status-badge.done {
+      background: #00ff8822;
+      color: #00ff88;
+      border-color: #00ff8855;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      padding: 24px 32px 0;
+    }
+
+    .card {
+      background: #1a1a2e;
+      border-radius: 12px;
+      padding: 20px 24px;
+      border: 1px solid #ffffff11;
+    }
+
+    .card .label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #888;
+      margin-bottom: 8px;
+    }
+
+    .card .value {
+      font-size: 32px;
+      font-weight: 700;
+      color: #00d4ff;
+    }
+
+    .card.green .value  { color: #00ff88; }
+    .card.red .value    { color: #ff4d6d; }
+    .card.yellow .value { color: #ffd166; }
+
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      padding: 16px 32px;
+    }
+
+    .panel {
+      background: #1a1a2e;
+      border-radius: 12px;
+      padding: 20px;
+      border: 1px solid #ffffff11;
+    }
+
+    .panel h2 {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #888;
+      margin-bottom: 16px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #ffffff11;
+    }
+
+    .chart-wrap {
+      position: relative;
+      height: 260px;
+    }
+
+    /* App breakdown bars */
+    .bar-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+      gap: 10px;
+    }
+
+    .bar-label {
+      width: 100px;
+      font-size: 12px;
+      color: #ccc;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .bar-track {
+      flex: 1;
+      height: 8px;
+      background: #ffffff11;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      background: linear-gradient(90deg, #00d4ff, #0099cc);
+      transition: width 0.5s ease;
+    }
+
+    .bar-fill.blocked {
+      background: linear-gradient(90deg, #ff4d6d, #cc0033);
+    }
+
+    .bar-count {
+      width: 40px;
+      font-size: 11px;
+      color: #888;
+      text-align: right;
+    }
+
+    /* Blocked list */
+    .blocked-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      margin-bottom: 6px;
+      background: #ff4d6d11;
+      border: 1px solid #ff4d6d22;
+      font-size: 12px;
+    }
+
+    .blocked-badge {
+      background: #ff4d6d;
+      color: white;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 10px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .blocked-info {
+      flex: 1;
+      color: #ccc;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* Domains list */
+    .domain-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 7px 10px;
+      border-radius: 8px;
+      margin-bottom: 5px;
+      background: #ffffff06;
+      font-size: 12px;
+    }
+
+    .domain-name {
+      color: #00d4ff;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 200px;
+    }
+
+    .domain-app {
+      color: #888;
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .bottom-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      padding: 0 32px 24px;
+    }
+
+    #processing-bar-wrap {
+      padding: 0 32px 16px;
+    }
+
+    #processing-bar-track {
+      height: 4px;
+      background: #ffffff11;
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    #processing-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #00d4ff, #00ff88);
+      width: 0%;
+      transition: width 0.5s ease;
+      border-radius: 2px;
+    }
+
+    .empty-msg {
+      color: #555;
+      font-size: 12px;
+      text-align: center;
+      padding: 20px 0;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>DeepInspect <span>Pro</span> — Live Dashboard</h1>
+  <div id="status-badge">● PROCESSING</div>
+</header>
+
+<!-- Stats Cards -->
+<div class="grid">
+  <div class="card">
+    <div class="label">Total Packets</div>
+    <div class="value" id="total">0</div>
+  </div>
+  <div class="card green">
+    <div class="label">Forwarded</div>
+    <div class="value" id="forwarded">0</div>
+  </div>
+  <div class="card red">
+    <div class="label">Dropped</div>
+    <div class="value" id="dropped">0</div>
+  </div>
+  <div class="card yellow">
+    <div class="label">Active Flows</div>
+    <div class="value" id="flows">0</div>
+  </div>
+</div>
+
+<!-- Progress Bar -->
+<div id="processing-bar-wrap" style="padding: 16px 32px 0;">
+  <div id="processing-bar-track">
+    <div id="processing-bar-fill"></div>
+  </div>
+</div>
+
+<!-- Main Grid -->
+<div class="main-grid">
+
+  <!-- Donut Chart -->
+  <div class="panel">
+    <h2>Traffic Distribution</h2>
+    <div class="chart-wrap">
+      <canvas id="donut-chart"></canvas>
+    </div>
+  </div>
+
+  <!-- App Breakdown Bars -->
+  <div class="panel">
+    <h2>Application Breakdown</h2>
+    <div id="app-bars"></div>
+  </div>
+
+</div>
+
+<!-- Bottom Grid -->
+<div class="bottom-grid">
+
+  <!-- Blocked Flows -->
+  <div class="panel">
+    <h2>Blocked Flows</h2>
+    <div id="blocked-list">
+      <div class="empty-msg">No blocked flows yet</div>
+    </div>
+  </div>
+
+  <!-- Detected Domains -->
+  <div class="panel">
+    <h2>Detected Domains</h2>
+    <div id="domain-list">
+      <div class="empty-msg">No domains detected yet</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const socket = io();
+
+  // Donut chart
+  const ctx = document.getElementById("donut-chart").getContext("2d");
+  const donut = new Chart(ctx, {
+    type: "doughnut",
+    data: {
+      labels: [],
+      datasets: [{
+        data: [],
+        backgroundColor: [
+          "#00d4ff","#00ff88","#ffd166","#ff4d6d","#c77dff",
+          "#ff9f1c","#2ec4b6","#e71d36","#011627","#fdfffc",
+          "#3a86ff","#ff006e","#8338ec","#fb5607","#06d6a0",
+        ],
+        borderWidth: 2,
+        borderColor: "#1a1a2e",
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: "right",
+          labels: {
+            color: "#ccc",
+            font: { size: 11 },
+            boxWidth: 12,
+            padding: 8,
+          }
+        }
+      }
+    }
+  });
+
+  let maxCount = 1;
+
+  socket.on("stats", (data) => {
+    // Update cards
+    document.getElementById("total").textContent     = data.total;
+    document.getElementById("forwarded").textContent = data.forwarded;
+    document.getElementById("dropped").textContent   = data.dropped;
+    document.getElementById("flows").textContent     = data.flows;
+
+    // Progress bar (animate while processing)
+    if (!data.done) {
+      const fill = document.getElementById("processing-bar-fill");
+      const pct  = parseInt(fill.style.width || "0");
+      fill.style.width = Math.min(pct + 5, 95) + "%";
+    } else {
+      document.getElementById("processing-bar-fill").style.width = "100%";
+      const badge = document.getElementById("status-badge");
+      badge.textContent = "✓ DONE";
+      badge.classList.add("done");
+    }
+
+    // Update donut chart
+    const labels = Object.keys(data.app_stats);
+    const values = Object.values(data.app_stats);
+    donut.data.labels   = labels;
+    donut.data.datasets[0].data = values;
+    donut.update();
+
+    // Update app breakdown bars
+    const sorted = Object.entries(data.app_stats)
+      .sort((a, b) => b[1] - a[1]).slice(0, 10);
+    maxCount = sorted.length > 0 ? sorted[0][1] : 1;
+
+    const blockedApps = data.blocked.map(b => b.app);
+    const barsEl = document.getElementById("app-bars");
+    barsEl.innerHTML = sorted.map(([app, count]) => {
+      const pct     = (count / maxCount * 100).toFixed(1);
+      const isBlock = blockedApps.includes(app);
+      return `
+        <div class="bar-row">
+          <div class="bar-label">${app}</div>
+          <div class="bar-track">
+            <div class="bar-fill ${isBlock ? 'blocked' : ''}"
+                 style="width:${pct}%"></div>
+          </div>
+          <div class="bar-count">${count}</div>
+        </div>`;
+    }).join("");
+
+    // Update blocked list
+    const blockedEl = document.getElementById("blocked-list");
+    if (data.blocked.length === 0) {
+      blockedEl.innerHTML = '<div class="empty-msg">No blocked flows yet</div>';
+    } else {
+      blockedEl.innerHTML = data.blocked.map(b => `
+        <div class="blocked-row">
+          <span class="blocked-badge">${b.app}</span>
+          <span class="blocked-info">
+            ${b.src} → ${b.dst}
+            ${b.sni ? `<span style="color:#ff4d6d"> (${b.sni})</span>` : ""}
+          </span>
+        </div>`).join("");
+    }
+
+    // Update domains list
+    const domainEl = document.getElementById("domain-list");
+    if (data.domains.length === 0) {
+      domainEl.innerHTML = '<div class="empty-msg">No domains detected yet</div>';
+    } else {
+      domainEl.innerHTML = data.domains.map(d => `
+        <div class="domain-row">
+          <span class="domain-name">${d.sni}</span>
+          <span class="domain-app">${d.app}</span>
+        </div>`).join("");
+    }
+  });
+</script>
+
+</body>
+</html>
