@@ -67,3 +67,54 @@ pip install flask flask-socketio
 ```
 
 Python 3.10+
+---
+
+## Quick Start (Copy & Paste)
+
+### Step 1 — Clone
+```bash
+git clone https://github.com/Tanishk75/deepinspect-pro.git
+cd deepinspect-pro
+```
+
+### Step 2 — Install dependencies
+```bash
+pip install flask flask-socketio
+```
+
+### Step 3 — Generate test traffic
+```bash
+python generate_test_pcap.py
+```
+
+### Step 4 — Launch web dashboard
+```bash
+python dashboard.py --pcap test_traffic.pcap --block-app YouTube --block-app Facebook
+```
+
+### Step 5 — Open browser
+http://localhost:5000
+
+### Optional — Run without dashboard
+```bash
+# Single-threaded
+python main.py test_traffic.pcap filtered.pcap --block-app YouTube
+
+# Multi-threaded
+python main_mt.py test_traffic.pcap filtered_mt.pcap --block-app YouTube --lbs 2 --fps 2
+```
+
+---
+
+## Difference from dpi-engine
+
+| Feature | dpi-engine | deepinspect-pro |
+|---------|-----------|-----------------|
+| Single-threaded engine | ✅ | ✅ |
+| Multi-threaded engine | ✅ | ✅ |
+| Test traffic generator | ✅ | ✅ |
+| Web dashboard | ❌ | ✅ |
+| Live donut chart | ❌ | ✅ |
+| Blocked flows panel | ❌ | ✅ |
+| Detected domains list | ❌ | ✅ |
+| External dependencies | None | Flask, SocketIO |
