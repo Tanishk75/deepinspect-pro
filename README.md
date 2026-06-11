@@ -45,6 +45,8 @@ python generate_test_pcap.py
 ---
 
 ## Project Structure
+
+```text
 dpi_engine_pro/
 ├── dpi/
 │   ├── types.py           # Data structures + app classification
@@ -58,7 +60,7 @@ dpi_engine_pro/
 ├── main_mt.py             # Multi-threaded engine
 ├── generate_test_pcap.py  # Test traffic generator
 └── requirements.txt
----
+```
 
 ## Requirements
 
